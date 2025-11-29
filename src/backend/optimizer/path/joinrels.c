@@ -695,6 +695,13 @@ make_join_rel(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
 	/* We should never try to join two overlapping sets of rels. */
 	Assert(!bms_overlap(rel1->relids, rel2->relids));
 
+	/* DEBUG: 조인 시도 시작 - 어떤 릴레이션들을 조인하려고 하는지 */
+	elog(LOG, "[JOIN ATTEMPT] Trying to join relations:");
+	elog(LOG, "  Rel1: relids=%u, rows=%.0f, reloptkind=%d",
+		 bms_num_members(rel1->relids), rel1->rows, rel1->reloptkind);
+	elog(LOG, "  Rel2: relids=%u, rows=%.0f, reloptkind=%d",
+		 bms_num_members(rel2->relids), rel2->rows, rel2->reloptkind);
+
 	/* Construct Relids set that identifies the joinrel. */
 	joinrelids = bms_union(rel1->relids, rel2->relids);
 
@@ -703,6 +710,7 @@ make_join_rel(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
 					   &sjinfo, &reversed))
 	{
 		/* invalid join path */
+		elog(LOG, "[JOIN ATTEMPT] FAILED: Invalid join (join order restriction or illegal combination)");
 		bms_free(joinrelids);
 		return NULL;
 	}
@@ -752,9 +760,15 @@ make_join_rel(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
 	 */
 	if (is_dummy_rel(joinrel))
 	{
+		elog(LOG, "[JOIN ATTEMPT] SKIPPED: Join results in empty relation");
 		bms_free(joinrelids);
 		return joinrel;
 	}
+
+	/* DEBUG: 유효한 조인 확인, 이제 경로 생성 단계로 진행 */
+	elog(LOG, "[JOIN ATTEMPT] SUCCESS: Valid join, jointype=%d, joinrelids=%u",
+		 sjinfo->jointype, bms_num_members(joinrelids));
+	elog(LOG, "  Proceeding to generate join paths and calculate costs...");
 
 	/* Add paths to the join relation. */
 	populate_joinrel_with_paths(root, rel1, rel2, joinrel, sjinfo,
