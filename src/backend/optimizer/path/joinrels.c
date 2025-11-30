@@ -695,12 +695,17 @@ make_join_rel(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
 	/* We should never try to join two overlapping sets of rels. */
 	Assert(!bms_overlap(rel1->relids, rel2->relids));
 
-	/* DEBUG: 조인 시도 시작 - 어떤 릴레이션들을 조인하려고 하는지 */
-	elog(NOTICE, "[JOIN ATTEMPT] Trying to join relations:");
-	elog(NOTICE, "  Rel1: relids=%u, rows=%.0f, reloptkind=%d",
-		 bms_num_members(rel1->relids), rel1->rows, rel1->reloptkind);
-	elog(NOTICE, "  Rel2: relids=%u, rows=%.0f, reloptkind=%d",
-		 bms_num_members(rel2->relids), rel2->rows, rel2->reloptkind);
+	/* [Task 3] Debugging: Join attempt tracking in make_join_rel */
+	elog(NOTICE, "[DEBUG] Function: %s | Rel1: relids=%u, rows=%.0f, reloptkind=%d, width=%d | Rel2: relids=%u, rows=%.0f, reloptkind=%d, width=%d",
+		 __func__,                                    /* 함수 이름: make_join_rel */
+		 bms_num_members(rel1->relids),              /* RelOptInfo->relids: 릴레이션 ID 집합 크기 */
+		 rel1->rows,                                /* RelOptInfo->rows: 예상 행 개수 */
+		 rel1->reloptkind,                          /* RelOptInfo->reloptkind: 릴레이션 종류 */
+		 rel1->reltarget->width,                    /* RelOptInfo->reltarget->width: 행 너비 */
+		 bms_num_members(rel2->relids),              /* RelOptInfo->relids */
+		 rel2->rows,                                /* RelOptInfo->rows */
+		 rel2->reloptkind,                          /* RelOptInfo->reloptkind */
+		 rel2->reltarget->width);                   /* RelOptInfo->reltarget->width */
 
 	/* Construct Relids set that identifies the joinrel. */
 	joinrelids = bms_union(rel1->relids, rel2->relids);
@@ -710,7 +715,8 @@ make_join_rel(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
 					   &sjinfo, &reversed))
 	{
 		/* invalid join path */
-		elog(NOTICE, "[JOIN ATTEMPT] FAILED: Invalid join (join order restriction or illegal combination)");
+		elog(NOTICE, "[DEBUG] Function: %s | FAILED: Invalid join (join order restriction or illegal combination) | Rel1_relids=%u, Rel2_relids=%u",
+			 __func__, bms_num_members(rel1->relids), bms_num_members(rel2->relids));
 		bms_free(joinrelids);
 		return NULL;
 	}
@@ -760,14 +766,19 @@ make_join_rel(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
 	 */
 	if (is_dummy_rel(joinrel))
 	{
-		elog(NOTICE, "[JOIN ATTEMPT] SKIPPED: Join results in empty relation");
+		elog(NOTICE, "[DEBUG] Function: %s | SKIPPED: Join results in empty relation | joinrelids=%u",
+			 __func__, bms_num_members(joinrelids));
 		bms_free(joinrelids);
 		return joinrel;
 	}
 
-	/* DEBUG: 유효한 조인 확인, 이제 경로 생성 단계로 진행 */
-	elog(NOTICE, "[JOIN ATTEMPT] SUCCESS: Valid join, jointype=%d, joinrelids=%u",
-		 sjinfo->jointype, bms_num_members(joinrelids));
+	/* [Task 3] Debugging: Successful join, proceeding to path generation */
+	elog(NOTICE, "[DEBUG] Function: %s | SUCCESS: Valid join | JoinType: %d | JoinRelids: %u | Rel1_relids=%u, Rel2_relids=%u",
+		 __func__,                                    /* 함수 이름: make_join_rel */
+		 sjinfo->jointype,                           /* SpecialJoinInfo->jointype: 조인 타입 */
+		 bms_num_members(joinrelids),                /* 조인 결과 릴레이션 ID 집합 크기 */
+		 bms_num_members(rel1->relids),             /* RelOptInfo->relids */
+		 bms_num_members(rel2->relids));            /* RelOptInfo->relids */
 	elog(NOTICE, "  Proceeding to generate join paths and calculate costs...");
 
 	/* Add paths to the join relation. */

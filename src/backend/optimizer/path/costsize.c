@@ -2964,14 +2964,18 @@ initial_cost_nestloop(PlannerInfo *root, JoinCostWorkspace *workspace,
 	/* Save private data for final_cost_nestloop */
 	workspace->run_cost = run_cost;
 
-	/* DEBUG: Nested Loop Join 초기 비용 추정 */
-	elog(NOTICE, "[JOIN COST] Nested Loop Join - Initial Cost Estimate:");
-	elog(NOTICE, "  Outer: rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
-		 outer_path_rows, outer_path->startup_cost, outer_path->total_cost);
-	elog(NOTICE, "  Inner: rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
-		 inner_path->rows, inner_path->startup_cost, inner_path->total_cost);
-	elog(NOTICE, "  Join: startup_cost=%.2f, total_cost=%.2f, jointype=%d",
-		 startup_cost, startup_cost + run_cost, jointype);
+	/* [Task 3] Debugging: Analyzing Join Costs inside initial_cost_nestloop */
+	elog(NOTICE, "[DEBUG] Function: %s | JoinType: %d | OuterRows: %.0f | InnerRows: %.0f | StartupCost: %.2f | TotalCost: %.2f",
+		 __func__,                                    /* 함수 이름 자동 출력 */
+		 jointype,                                    /* 조인 타입 (JOIN_INNER=1, JOIN_LEFT=2 등) */
+		 outer_path_rows,                            /* Path->rows: 바깥쪽 테이블의 행 개수 */
+		 inner_path->rows,                           /* Path->rows: 안쪽 테이블의 행 개수 */
+		 startup_cost,                               /* JoinCostWorkspace->startup_cost */
+		 startup_cost + run_cost);                   /* JoinCostWorkspace->total_cost */
+	elog(NOTICE, "  Outer Path: pathtype=%d, rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
+		 outer_path->pathtype, outer_path->rows, outer_path->startup_cost, outer_path->total_cost);
+	elog(NOTICE, "  Inner Path: pathtype=%d, rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
+		 inner_path->pathtype, inner_path->rows, inner_path->startup_cost, inner_path->total_cost);
 }
 
 /*
@@ -3157,13 +3161,19 @@ final_cost_nestloop(PlannerInfo *root, NestPath *path,
 	path->path.startup_cost = startup_cost;
 	path->path.total_cost = startup_cost + run_cost;
 
-	/* DEBUG: Nested Loop Join 최종 비용 계산 */
-	elog(NOTICE, "[JOIN COST] Nested Loop Join - Final Cost:");
-	elog(NOTICE, "  Outer: rows=%.0f, cost=%.2f", outer_path_rows, outer_path->total_cost);
-	elog(NOTICE, "  Inner: rows=%.0f, cost=%.2f", inner_path_rows, inner_path->total_cost);
-	elog(NOTICE, "  Result: rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
-		 path->path.rows, startup_cost, startup_cost + run_cost);
-	elog(NOTICE, "  Decision: This path will be compared with other join methods");
+	/* [Task 3] Debugging: Final cost calculation in final_cost_nestloop */
+	elog(NOTICE, "[DEBUG] Function: %s | PathType: %d | JoinType: %d | OuterRows: %.0f | InnerRows: %.0f | ResultRows: %.0f | TotalCost: %.2f",
+		 __func__,                                    /* 함수 이름: final_cost_nestloop */
+		 path->path.pathtype,                        /* NestPath->path.pathtype: T_NestLoop 등 */
+		 path->jointype,                             /* NestPath->jointype: 조인 타입 */
+		 outer_path_rows,                           /* Path->rows: 바깥쪽 행 개수 */
+		 inner_path_rows,                           /* Path->rows: 안쪽 행 개수 */
+		 path->path.rows,                            /* NestPath->path.rows: 조인 결과 행 개수 */
+		 startup_cost + run_cost);                   /* NestPath->path.total_cost: 최종 비용 */
+	elog(NOTICE, "  NestPath structure: inner_unique=%d, outer_path->pathtype=%d, inner_path->pathtype=%d",
+		 path->inner_unique,                        /* NestPath->inner_unique: 내부 유일성 */
+		 path->outerjoinpath->pathtype,             /* NestPath->outerjoinpath->pathtype */
+		 path->innerjoinpath->pathtype);            /* NestPath->innerjoinpath->pathtype */
 }
 
 /*
@@ -3671,14 +3681,19 @@ final_cost_mergejoin(PlannerInfo *root, MergePath *path,
 	path->jpath.path.startup_cost = startup_cost;
 	path->jpath.path.total_cost = startup_cost + run_cost;
 
-	/* DEBUG: Merge Join 최종 비용 계산 */
-	elog(NOTICE, "[JOIN COST] Merge Join - Final Cost:");
-	elog(NOTICE, "  Outer: rows=%.0f, cost=%.2f", outer_rows, outer_path->total_cost);
-	elog(NOTICE, "  Inner: rows=%.0f, cost=%.2f", inner_rows, inner_path->total_cost);
-	elog(NOTICE, "  Result: rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
-		 path->jpath.path.rows, startup_cost, startup_cost + run_cost);
-	elog(NOTICE, "  Materialize inner: %s", path->materialize_inner ? "yes" : "no");
-	elog(NOTICE, "  Decision: This path will be compared with other join methods");
+	/* [Task 3] Debugging: Final cost calculation in final_cost_mergejoin */
+	elog(NOTICE, "[DEBUG] Function: %s | PathType: %d | JoinType: %d | OuterRows: %.0f | InnerRows: %.0f | ResultRows: %.0f | TotalCost: %.2f",
+		 __func__,                                    /* 함수 이름: final_cost_mergejoin */
+		 path->jpath.path.pathtype,                  /* MergePath->jpath.path.pathtype: T_MergeJoin */
+		 path->jpath.jointype,                       /* MergePath->jpath.jointype: 조인 타입 */
+		 outer_rows,                                /* MergePath->jpath.outerjoinpath->rows */
+		 inner_rows,                                /* MergePath->jpath.innerjoinpath->rows */
+		 path->jpath.path.rows,                      /* MergePath->jpath.path.rows: 조인 결과 행 개수 */
+		 startup_cost + run_cost);                   /* MergePath->jpath.path.total_cost: 최종 비용 */
+	elog(NOTICE, "  MergePath structure: skip_mark_restore=%d, materialize_inner=%d, mergeclauses=%d",
+		 path->skip_mark_restore,                   /* MergePath->skip_mark_restore: 마크/복원 생략 여부 */
+		 path->materialize_inner,                   /* MergePath->materialize_inner: 내부 materialization */
+		 list_length(path->path_mergeclauses));     /* MergePath->path_mergeclauses: 병합 절 개수 */
 }
 
 /*
@@ -4116,14 +4131,19 @@ final_cost_hashjoin(PlannerInfo *root, HashPath *path,
 	path->jpath.path.startup_cost = startup_cost;
 	path->jpath.path.total_cost = startup_cost + run_cost;
 
-	/* DEBUG: Hash Join 최종 비용 계산 */
-	elog(NOTICE, "[JOIN COST] Hash Join - Final Cost:");
-	elog(NOTICE, "  Outer: rows=%.0f, cost=%.2f", outer_path_rows, outer_path->total_cost);
-	elog(NOTICE, "  Inner: rows=%.0f, cost=%.2f", inner_path_rows, inner_path->total_cost);
-	elog(NOTICE, "  Result: rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
-		 path->jpath.path.rows, startup_cost, startup_cost + run_cost);
-	elog(NOTICE, "  Hash table: num_buckets=%d, num_batches=%d", numbuckets, numbatches);
-	elog(NOTICE, "  Decision: This path will be compared with other join methods");
+	/* [Task 3] Debugging: Final cost calculation in final_cost_hashjoin */
+	elog(NOTICE, "[DEBUG] Function: %s | PathType: %d | JoinType: %d | OuterRows: %.0f | InnerRows: %.0f | ResultRows: %.0f | TotalCost: %.2f",
+		 __func__,                                    /* 함수 이름: final_cost_hashjoin */
+		 path->jpath.path.pathtype,                  /* HashPath->jpath.path.pathtype: T_HashJoin */
+		 path->jpath.jointype,                       /* HashPath->jpath.jointype: 조인 타입 */
+		 outer_path_rows,                           /* HashPath->jpath.outerjoinpath->rows */
+		 inner_path_rows,                           /* HashPath->jpath.innerjoinpath->rows */
+		 path->jpath.path.rows,                      /* HashPath->jpath.path.rows: 조인 결과 행 개수 */
+		 startup_cost + run_cost);                   /* HashPath->jpath.path.total_cost: 최종 비용 */
+	elog(NOTICE, "  HashPath structure: num_batches=%d, inner_rows_total=%.0f, hashclauses=%d",
+		 path->num_batches,                         /* HashPath->num_batches: 배치 개수 */
+		 path->inner_rows_total,                    /* HashPath->inner_rows_total: 전체 내부 행 수 */
+		 list_length(path->path_hashclauses));      /* HashPath->path_hashclauses: 해시 절 개수 */
 }
 
 
