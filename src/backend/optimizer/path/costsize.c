@@ -3174,6 +3174,86 @@ final_cost_nestloop(PlannerInfo *root, NestPath *path,
 		 path->inner_unique,                        /* NestPath->inner_unique: 내부 유일성 */
 		 path->outerjoinpath->pathtype,             /* NestPath->outerjoinpath->pathtype */
 		 path->innerjoinpath->pathtype);            /* NestPath->innerjoinpath->pathtype */
+
+	/* [Task 4 Modification] CPU Cache Hit Optimization for Nested Loop Join */
+	/* Rationale: When the inner table is small enough to fit in CPU cache (L3 cache),
+	 * repeated scans in Nested Loop Join benefit from cache hits, making it much faster
+	 * than RAM access. This optimization favors Nested Loop when inner table size
+	 * suggests it can reside in CPU cache, prioritizing first-row latency for real-time systems. */
+	{
+		Cost		original_startup_cost = path->path.startup_cost;
+		Cost		original_total_cost = path->path.total_cost;
+		RelOptInfo *inner_rel = inner_path->parent;
+		double		inner_table_size_bytes = 0.0;
+		double		cpu_l3_cache_size_bytes = 8 * 1024 * 1024;  /* 8MB: typical L3 cache size */
+		double		cost_reduction_factor = 1.0;
+		bool		cache_fit = false;
+
+		/* Calculate inner table size: pages * BLCKSZ (default 8KB) */
+		if (inner_rel != NULL && inner_rel->pages > 0)
+		{
+			/* RelOptInfo->pages: number of disk pages */
+			/* BLCKSZ: block size in bytes (typically 8192 = 8KB) */
+			inner_table_size_bytes = (double) inner_rel->pages * BLCKSZ;
+			
+			/* Check if inner table can fit in CPU L3 cache */
+			/* We use 80% of cache size as threshold to account for other data */
+			if (inner_table_size_bytes <= (cpu_l3_cache_size_bytes * 0.8))
+			{
+				cache_fit = true;
+				/* Apply cost reduction: smaller tables get more benefit */
+				/* Factor ranges from 0.1 (very small) to 0.5 (near cache limit) */
+				cost_reduction_factor = 0.1 + (inner_table_size_bytes / cpu_l3_cache_size_bytes) * 0.4;
+			}
+		}
+		else
+		{
+			/* Fallback: estimate size from rows and width if pages not available */
+			if (inner_path->pathtarget != NULL)
+			{
+				inner_table_size_bytes = inner_path_rows * inner_path->pathtarget->width;
+				if (inner_table_size_bytes <= (cpu_l3_cache_size_bytes * 0.8))
+				{
+					cache_fit = true;
+					cost_reduction_factor = 0.1 + (inner_table_size_bytes / cpu_l3_cache_size_bytes) * 0.4;
+				}
+			}
+		}
+
+		/* Apply cost reduction if inner table fits in CPU cache */
+		if (cache_fit)
+		{
+			path->path.startup_cost *= cost_reduction_factor;
+			path->path.total_cost *= cost_reduction_factor;
+
+			/* [Task 4] Debugging: Track modified behavior with cache-aware optimization */
+			elog(NOTICE, "[Task 4] CPU Cache Hit Optimization Applied to Nested Loop Join:");
+			elog(NOTICE, "  Inner table analysis: pages=%u, estimated_size=%.0f bytes (%.2f MB)",
+				 inner_rel ? inner_rel->pages : 0,
+				 inner_table_size_bytes, inner_table_size_bytes / (1024.0 * 1024.0));
+			elog(NOTICE, "  CPU L3 cache threshold: %.0f bytes (%.2f MB)",
+				 cpu_l3_cache_size_bytes * 0.8, (cpu_l3_cache_size_bytes * 0.8) / (1024.0 * 1024.0));
+			elog(NOTICE, "  Cache fit: %s | Cost reduction factor: %.3f",
+				 cache_fit ? "YES" : "NO", cost_reduction_factor);
+			elog(NOTICE, "  Original: startup_cost=%.2f, total_cost=%.2f",
+				 original_startup_cost, original_total_cost);
+			elog(NOTICE, "  Modified: startup_cost=%.2f, total_cost=%.2f",
+				 path->path.startup_cost, path->path.total_cost);
+			elog(NOTICE, "  Rationale: Inner table fits in CPU cache - repeated scans benefit from cache hits");
+		}
+		else
+		{
+			/* [Task 4] Debugging: No optimization applied */
+			elog(NOTICE, "[Task 4] CPU Cache Hit Optimization: NOT APPLIED");
+			elog(NOTICE, "  Inner table analysis: pages=%u, estimated_size=%.0f bytes (%.2f MB)",
+				 inner_rel ? inner_rel->pages : 0,
+				 inner_table_size_bytes, inner_table_size_bytes / (1024.0 * 1024.0));
+			elog(NOTICE, "  Reason: Inner table too large for CPU cache (threshold: %.2f MB)",
+				 (cpu_l3_cache_size_bytes * 0.8) / (1024.0 * 1024.0));
+			elog(NOTICE, "  Original cost maintained: startup_cost=%.2f, total_cost=%.2f",
+				 original_startup_cost, original_total_cost);
+		}
+	}
 }
 
 /*
