@@ -2965,12 +2965,12 @@ initial_cost_nestloop(PlannerInfo *root, JoinCostWorkspace *workspace,
 	workspace->run_cost = run_cost;
 
 	/* DEBUG: Nested Loop Join 초기 비용 추정 */
-	elog(LOG, "[JOIN COST] Nested Loop Join - Initial Cost Estimate:");
-	elog(LOG, "  Outer: rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
+	elog(NOTICE, "[JOIN COST] Nested Loop Join - Initial Cost Estimate:");
+	elog(NOTICE, "  Outer: rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
 		 outer_path_rows, outer_path->startup_cost, outer_path->total_cost);
-	elog(LOG, "  Inner: rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
+	elog(NOTICE, "  Inner: rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
 		 inner_path->rows, inner_path->startup_cost, inner_path->total_cost);
-	elog(LOG, "  Join: startup_cost=%.2f, total_cost=%.2f, jointype=%d",
+	elog(NOTICE, "  Join: startup_cost=%.2f, total_cost=%.2f, jointype=%d",
 		 startup_cost, startup_cost + run_cost, jointype);
 }
 
@@ -3158,12 +3158,12 @@ final_cost_nestloop(PlannerInfo *root, NestPath *path,
 	path->path.total_cost = startup_cost + run_cost;
 
 	/* DEBUG: Nested Loop Join 최종 비용 계산 */
-	elog(LOG, "[JOIN COST] Nested Loop Join - Final Cost:");
-	elog(LOG, "  Outer: rows=%.0f, cost=%.2f", outer_path_rows, outer_path->total_cost);
-	elog(LOG, "  Inner: rows=%.0f, cost=%.2f", inner_path_rows, inner_path->total_cost);
-	elog(LOG, "  Result: rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
+	elog(NOTICE, "[JOIN COST] Nested Loop Join - Final Cost:");
+	elog(NOTICE, "  Outer: rows=%.0f, cost=%.2f", outer_path_rows, outer_path->total_cost);
+	elog(NOTICE, "  Inner: rows=%.0f, cost=%.2f", inner_path_rows, inner_path->total_cost);
+	elog(NOTICE, "  Result: rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
 		 path->path.rows, startup_cost, startup_cost + run_cost);
-	elog(LOG, "  Decision: This path will be compared with other join methods");
+	elog(NOTICE, "  Decision: This path will be compared with other join methods");
 }
 
 /*
@@ -3672,13 +3672,13 @@ final_cost_mergejoin(PlannerInfo *root, MergePath *path,
 	path->jpath.path.total_cost = startup_cost + run_cost;
 
 	/* DEBUG: Merge Join 최종 비용 계산 */
-	elog(LOG, "[JOIN COST] Merge Join - Final Cost:");
-	elog(LOG, "  Outer: rows=%.0f, cost=%.2f", outer_rows, outer_path->total_cost);
-	elog(LOG, "  Inner: rows=%.0f, cost=%.2f", inner_rows, inner_path->total_cost);
-	elog(LOG, "  Result: rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
+	elog(NOTICE, "[JOIN COST] Merge Join - Final Cost:");
+	elog(NOTICE, "  Outer: rows=%.0f, cost=%.2f", outer_rows, outer_path->total_cost);
+	elog(NOTICE, "  Inner: rows=%.0f, cost=%.2f", inner_rows, inner_path->total_cost);
+	elog(NOTICE, "  Result: rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
 		 path->jpath.path.rows, startup_cost, startup_cost + run_cost);
-	elog(LOG, "  Materialize inner: %s", path->materialize_inner ? "yes" : "no");
-	elog(LOG, "  Decision: This path will be compared with other join methods");
+	elog(NOTICE, "  Materialize inner: %s", path->materialize_inner ? "yes" : "no");
+	elog(NOTICE, "  Decision: This path will be compared with other join methods");
 }
 
 /*
@@ -4117,13 +4117,13 @@ final_cost_hashjoin(PlannerInfo *root, HashPath *path,
 	path->jpath.path.total_cost = startup_cost + run_cost;
 
 	/* DEBUG: Hash Join 최종 비용 계산 */
-	elog(LOG, "[JOIN COST] Hash Join - Final Cost:");
-	elog(LOG, "  Outer: rows=%.0f, cost=%.2f", outer_path_rows, outer_path->total_cost);
-	elog(LOG, "  Inner: rows=%.0f, cost=%.2f", inner_path_rows, inner_path->total_cost);
-	elog(LOG, "  Result: rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
+	elog(NOTICE, "[JOIN COST] Hash Join - Final Cost:");
+	elog(NOTICE, "  Outer: rows=%.0f, cost=%.2f", outer_path_rows, outer_path->total_cost);
+	elog(NOTICE, "  Inner: rows=%.0f, cost=%.2f", inner_path_rows, inner_path->total_cost);
+	elog(NOTICE, "  Result: rows=%.0f, startup_cost=%.2f, total_cost=%.2f",
 		 path->jpath.path.rows, startup_cost, startup_cost + run_cost);
-	elog(LOG, "  Hash table: num_buckets=%d, num_batches=%d", numbuckets, numbatches);
-	elog(LOG, "  Decision: This path will be compared with other join methods");
+	elog(NOTICE, "  Hash table: num_buckets=%d, num_batches=%d", numbuckets, numbatches);
+	elog(NOTICE, "  Decision: This path will be compared with other join methods");
 }
 
 
